@@ -7,7 +7,7 @@ project ("LargeDynamicBitSetAndIntegerNumber")
 
 # 设置默认的构建类型为 Debug，如果没有指定构建类型
 if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_CXX_STANDARD 11)
+	set(CMAKE_CXX_STANDARD 17)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 	set(CMAKE_CXX_EXTENSIONS OFF)
 	set(CMAKE_BUILD_TYPE debug CACHE STRING "Choose the type of build (Debug or Release)" FORCE)
@@ -30,11 +30,26 @@ else()
 	endif()
 endif()
 
-# 将源代码添加到此项目的可执行文件。
-add_executable (LargeDynamicBitSetAndIntegerNumber "DynamicBitSet.hpp" "DynamicBitSet.cpp" "TestDynamicBitset.hpp" "main.cpp")
+#LargeDynamicBitSetAndIntegerNumber
+
+add_library(LargeDynamicBitSet
+	BooleanBitWrapper.cpp
+	BooleanBitWrapper.hpp
+	DynamicBitSet.cpp
+	DynamicBitSet.hpp
+	DynamicBitSetIterators.cpp
+	DynamicBitSetIterators.hpp
+)
+
+#LargeIntegerNumber.cpp
+#LargeIntegerNumber.hpp
+
+add_executable(TestLargeDynamicBitSet main.cpp)
+target_link_libraries(TestLargeDynamicBitSet PRIVATE LargeDynamicBitSet)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET LargeDynamicBitSetAndIntegerNumber PROPERTY CXX_STANDARD 11)
+  set_property(TARGET LargeDynamicBitSet PROPERTY CXX_STANDARD 17)
+  set_property(TARGET TestLargeDynamicBitSet PROPERTY CXX_STANDARD 17)
 endif()
 
 # TODO: 如有需要，请添加测试并安装目标。

@@ -76,6 +76,25 @@ inline void testDynamicBitSet()
 	dbset.push_back( false );
 	dbset.push_back( false );
 
+	std::cout << "Testing push back:" << std::endl;
+	std::cout << dbset.format_binary_string( true ) << std::endl;
+
+	// 测试正向迭代器
+	std::cout << "Testing forward iterator:" << std::endl;
+	for ( auto it = dbset.begin(); it != dbset.end(); ++it )
+	{
+		std::cout << (bool)*it << " ";
+	}
+	std::cout << std::endl;
+
+	// 测试反向迭代器
+	std::cout << "Testing reverse iterator:" << std::endl;
+	for ( auto it = dbset.rbegin(); it != dbset.rend(); ++it )
+	{
+		std::cout << (bool)*it << " ";
+	}
+	std::cout << std::endl;
+
 	// 测试正向迭代器
 	std::cout << "Testing (Modified) forward iterator:" << std::endl;
 	for ( auto it = dbset.begin(); it + 1 != dbset.end(); ++it )
@@ -636,14 +655,6 @@ inline void AllTestBitset()
 
 		rotate_left
 		rotate_right
-
-		The overly complex bit iterator leads to some behavior not expected by design.
-		Based on the std::vector<BooleanBitWrapper>* type, and the manual management of the block index and bit offset positions.
-		
-		using iterator = BitIterator;
-		using const_iterator = ConstantBitIterator;
-		using reverse_iterator = ReverseBitIterator;
-		using const_reverse_iterator = ConstantReverseBitIterator;
 	*/
 
 	testBooleanBitWrapper();
