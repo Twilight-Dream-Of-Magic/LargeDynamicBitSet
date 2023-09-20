@@ -19,65 +19,14 @@
 #include <utility>
 #include <type_traits>
 
+#include "DynamicBitSetIterators.hpp"
+
 namespace TwilightDream
 {
-	struct BooleanBitWrapper
-	{
-		uint32_t bits;
-
-		BooleanBitWrapper();
-		BooleanBitWrapper( uint32_t value );
-		~BooleanBitWrapper();
-
-		// 按位与操作
-		void bit_and( uint32_t other );
-		// 按位或操作
-		void bit_or( uint32_t other );
-
-		// 按位非操作
-		void bit_not();
-
-		// 按位异或操作
-		void bit_xor( uint32_t other );
-		// 按位同或操作
-		void bit_not_xor( uint32_t other );
-
-		// 按位非与操作
-		void bit_not_and( uint32_t other );
-
-		// 按位非或操作
-		void bit_not_or( uint32_t other );
-
-		// 按位左移操作
-		void bit_leftshift( int shift );
-		// 按位右移操作
-		void bit_rightshift( int shift );
-
-		// 设置所有位为给定的布尔值
-		void bit_set( bool value );
-
-		// 设置指定索引的位为给定的布尔值
-		void bit_set( bool value, int index );
-
-		// 翻转指定索引的位
-		void bit_flip( size_t index );
-
-		// 获取指定索引的位的布尔值
-		bool bit_get( int index ) const;
-
-		// 统计比特'1'的数量
-		size_t count_bits() const;
-
-		BooleanBitWrapper operator=( const BooleanBitWrapper& other );
-
-		friend bool operator==( const BooleanBitWrapper& left, const BooleanBitWrapper& right );
-
-		friend bool operator!=( const BooleanBitWrapper& left, const BooleanBitWrapper& right );
-	};
-
 	class DynamicBitSet
 	{
 	public:
+
 		DynamicBitSet()
 		{
 			// 默认构造函数，可能进行一些初始化操作
@@ -126,7 +75,8 @@ namespace TwilightDream
 			resize( binaryString.size() );
 			for ( size_t i = 0; i < binary.size(); ++i )
 			{
-				set_bit( binary[ i ] == '1', i );
+				if(binary[ i ] == '1' || binary[ i ] == '0')
+					set_bit( binary[ i ] == '1', i );
 			}
 
 			// 设置实际的比特大小
@@ -174,6 +124,11 @@ namespace TwilightDream
 			default:
 				throw std::invalid_argument( "Invalid format specifier" );
 			}
+
+			// 设置实际的比特大小
+			data_chunk_count = bitset.size();
+			data_size = this->valid_number_of_bits();
+			data_capacity = bitset.size() * 32;
 		}
 
 		DynamicBitSet( uint32_t value )
@@ -338,181 +293,6 @@ namespace TwilightDream
 			data_chunk_count = 0;
 		}
 
-		struct BitIteratorBaseData
-		{
-			// 为正向迭代器的开始位置和偏移位置，创建的构造函数
-			BitIteratorBaseData( std::vector<BooleanBitWrapper>* container_pointer, size_t chunk_index, size_t bit_offset, size_t max_valid_bits );
-
-			// 为正向迭代器的结束位置，创建的特殊构造函数
-			BitIteratorBaseData( std::vector<BooleanBitWrapper>* container_pointer, size_t max_valid_bits );
-
-			// 为反向迭代器的开始和结束位置，创建的特殊构造函数
-			BitIteratorBaseData(std::vector<BooleanBitWrapper>* container_pointer, size_t max_valid_bits, bool is_reverse_end_iterator);
-
-			BitIteratorBaseData( const BitIteratorBaseData& other ) = default;
-			BitIteratorBaseData( BitIteratorBaseData&& other ) = default;
-			BitIteratorBaseData& operator=( BitIteratorBaseData&& other ) = default;
-			BitIteratorBaseData& operator=( const BitIteratorBaseData& other ) = default;
-
-		protected:
-			BooleanBitWrapper*				data_pointer = nullptr;
-			std::vector<BooleanBitWrapper>* container_pointer = nullptr;
-			size_t							chunk_index = 0;
-			size_t							bit_offset = 0;
-			size_t							max_valid_bits = 0;
-			//Is it a forward read-only end iterator?
-			bool							is_end_iterator;
-
-			//Iterator increments by 1
-			//迭代器自增
-			void offset_up();
-
-			//Iterator decrements by 1
-			//迭代器自减
-			void offset_down();
-
-			bool is_read_only_end_iterator() const;
-			bool is_start_bit_position() const;
-			bool is_end_bit_position() const;
-
-			// 前向偏移
-			void advance( std::ptrdiff_t n );
-
-			// 后向偏移
-			void retreat( std::ptrdiff_t n );
-		};
-
-		struct BitReference
-		{
-			uint32_t* data_pointer;
-			uint32_t bits_mask;
-
-			BitReference() noexcept;
-			BitReference(BooleanBitWrapper* wrapper_pointer, uint32_t bits_mask);
-			BitReference(const BitReference& other) = default;
-
-			operator bool() const noexcept;
-			BitReference& operator=(bool value) noexcept;
-			BitReference& operator=(const BitReference& other) noexcept;
-			BitReference& operator^=(const BitReference& other) noexcept;
-			BitReference& operator&=(const BitReference& other) noexcept;
-			BitReference& operator|=(const BitReference& other) noexcept;
-			bool operator~() noexcept;
-			bool operator==(const BitReference& other) const;
-			bool operator<(const BitReference& other) const;
-			bool operator>(const BitReference& other) const;
-			bool operator<=(const BitReference& other) const;
-			bool operator>=(const BitReference& other) const;
-			void flip() noexcept;
-		};
-
-		struct ConstantBitIterator : BitIteratorBaseData
-		{
-			using BitIteratorBaseData::BitIteratorBaseData;  // 继承基类的构造函数
-
-			using iterator_category = std::random_access_iterator_tag;
-			using iterator = ConstantBitIterator;
-			using value_type = bool;
-			using difference_type = std::ptrdiff_t;
-			using pointer = bool*;
-			using reference = bool;
-
-			bool operator*() const;
-			bool operator[](std::ptrdiff_t offset) const;
-			ConstantBitIterator operator+(std::ptrdiff_t offset) const;
-			ConstantBitIterator operator-(std::ptrdiff_t offset) const;
-			std::ptrdiff_t operator-(const ConstantBitIterator& other) const;
-			ConstantBitIterator& operator++();
-			ConstantBitIterator operator++(int);
-			ConstantBitIterator& operator--();
-			ConstantBitIterator operator--(int);
-			bool operator==(const ConstantBitIterator& other) const;
-			bool operator!=(const ConstantBitIterator& other) const;
-			bool operator<(const ConstantBitIterator& other) const;
-			bool operator>(const ConstantBitIterator& other) const;
-			bool operator<=(const ConstantBitIterator& other) const;
-			bool operator>=(const ConstantBitIterator& other) const;
-
-			friend std::ptrdiff_t operator-(const ConstantBitIterator& left, const ConstantBitIterator& right);
-		};
-
-		struct BitIterator : ConstantBitIterator
-		{
-			using ConstantBitIterator::ConstantBitIterator;  // 继承基类的构造函数
-
-			using iterator_category = std::random_access_iterator_tag;
-			using iterator = BitIterator;
-			using value_type = bool;
-			using difference_type = std::ptrdiff_t;
-			using pointer = BitReference*;
-			using reference = BitReference;
-
-			BitReference operator*();
-			BitReference operator[](std::ptrdiff_t offset);
-			BitIterator operator+(std::ptrdiff_t offset) const;
-			BitIterator operator-(std::ptrdiff_t offset) const;
-			BitIterator& operator+=(std::ptrdiff_t offset);
-			BitIterator& operator-=(std::ptrdiff_t offset);
-			BitIterator& operator++();
-			BitIterator operator++(int);
-			BitIterator& operator--();
-			BitIterator operator--(int);
-			BitIterator& operator=(bool value);
-		};
-
-		struct ConstantReverseBitIterator : BitIteratorBaseData
-		{
-			using BitIteratorBaseData::BitIteratorBaseData;  // 继承基类的构造函数
-
-			// 使用正向迭代器的结束位置来构造反向迭代器的开始位置
-			ConstantReverseBitIterator(std::vector<BooleanBitWrapper>* container_pointer, size_t max_valid_bits);
-
-			// 使用正向迭代器的开始位置来构造反向迭代器的结束位置
-			ConstantReverseBitIterator(std::vector<BooleanBitWrapper>* container_pointer);
-
-			bool operator*() const;
-			bool operator[](std::ptrdiff_t offset) const;
-			ConstantReverseBitIterator operator+(std::ptrdiff_t offset) const;
-			ConstantReverseBitIterator operator-(std::ptrdiff_t offset) const;
-			std::ptrdiff_t operator-(const ConstantReverseBitIterator& other) const;
-			ConstantReverseBitIterator& operator++();
-			ConstantReverseBitIterator operator++(int);
-			ConstantReverseBitIterator& operator--();
-			ConstantReverseBitIterator operator--(int);
-			bool operator==(const ConstantReverseBitIterator& other) const;
-			bool operator!=(const ConstantReverseBitIterator& other) const;
-			bool operator<(const ConstantReverseBitIterator& other) const;
-			bool operator>(const ConstantReverseBitIterator& other) const;
-			bool operator<=(const ConstantReverseBitIterator& other) const;
-			bool operator>=(const ConstantReverseBitIterator& other) const;
-
-			friend std::ptrdiff_t operator-(const ConstantReverseBitIterator& left, const ConstantReverseBitIterator& right);
-
-		protected:
-			// 对于反向迭代器而言，考虑在正向迭代器的逻辑上，迭代器是否在开头之前的位置
-			bool is_before_start = false;
-
-			void offset_up();
-			void offset_down();
-		};
-
-		struct ReverseBitIterator : ConstantReverseBitIterator
-		{
-			using ConstantReverseBitIterator::ConstantReverseBitIterator;  // 继承基类的构造函数
-
-			BitReference operator*();
-			BitReference operator[](std::ptrdiff_t offset);
-			ReverseBitIterator operator+(std::ptrdiff_t offset) const;
-			ReverseBitIterator operator-(std::ptrdiff_t offset) const;
-			ReverseBitIterator& operator-=(std::ptrdiff_t n);
-			ReverseBitIterator& operator+=(std::ptrdiff_t n);
-			ReverseBitIterator& operator++();
-			ReverseBitIterator operator++(int);
-			ReverseBitIterator& operator--();
-			ReverseBitIterator operator--(int);
-			ReverseBitIterator& operator=(bool value);
-		};
-
 		using iterator = BitIterator;
 		using const_iterator = ConstantBitIterator;
 		using reverse_iterator = ReverseBitIterator;
@@ -629,8 +409,9 @@ namespace TwilightDream
 		{
 			for ( const auto& wrapper : bitset )
 			{
+				// 如果有任何一个位没有被设置
 				if ( wrapper.bits != 0xFFFFFFFF )
-				{  // 如果有任何一个位没有被设置
+				{
 					return false;
 				}
 			}
@@ -642,8 +423,9 @@ namespace TwilightDream
 		{
 			for ( const auto& wrapper : bitset )
 			{
+				// 如果有任何一个位被设置
 				if ( wrapper.bits != 0 )
-				{  // 如果有任何一个位被设置
+				{
 					return true;
 				}
 			}
@@ -655,8 +437,9 @@ namespace TwilightDream
 		{
 			for ( const auto& wrapper : bitset )
 			{
+				// 如果有任何一个位被设置
 				if ( wrapper.bits != 0 )
-				{  // 如果有任何一个位被设置
+				{
 					return false;
 				}
 			}
@@ -755,52 +538,50 @@ namespace TwilightDream
 				return;
 			}
 
-			if ( this->data_size == 0 )
+			//检测到错误记录的 data_size
+			if ( this->data_size == 0 && bitset[ 0 ].bits == 0)
 			{
-				if ( bitset[ 0 ].bits == 0 )
+				if ( this->hamming_weight() )
 				{
-					if ( this->hamming_weight() )
+					this->data_size = this->valid_number_of_bits();
+				}
+
+				if ( !value && this->data_size == 0 )
+					return;
+				else if ( value && this->data_size == 0 )
+				{
+					/* 特殊处理：bitset不为0 和 data_size 为0，并且且没有任何有效个比特1数据被存储。 */
+
+					//更新btiset容量大小。
+					bitset.resize( needed_chunks( bitset.size() * 32 + 1 ), BooleanBitWrapper( 0x00000000 ) );
+
+					data_chunk_count = this->bitset.size();
+					data_capacity = this->bitset.size() * 32;
+
+					//修复错误记录的 data_size
+					this->data_size = bitset.size() * 32 + 1;
+
+					if ( index >= this->data_size )
 					{
-						this->data_size = this->valid_number_of_bits();
+						throw std::out_of_range( "Index out of range" );
 					}
 
-					if ( !value && this->data_size == 0 )
-						return;
-					else if ( value && this->data_size == 0 )
+					if ( index == 0 )
 					{
-						/* 特殊处理：bitset不为0 和 data_size 为0，并且且没有任何有效个比特1数据被存储。 */
-
-						//更新btiset容量大小。
-						bitset.resize( needed_chunks( bitset.size() * 32 + 1 ), BooleanBitWrapper( 0x00000000 ) );
-
-						data_chunk_count = this->bitset.size();
-						data_capacity = this->bitset.size() * 32;
-
-						//修复错误记录的 data_size
-						this->data_size = bitset.size() * 32 + 1;
-
-						if ( index >= this->data_size )
-						{
-							throw std::out_of_range( "Index out of range" );
-						}
-
-						if ( index == 0 )
-						{
-							// 如果 index 为 0（即 LSB）
-							( *this )[ 1 ] = true;	// 设置 原 LSB + 1 为 1
-							return;
-						}
-						else if ( index == bitset.size() * 32 - 1 )
-						{
-							// 如果 index 为 bitset.size() * 32 - 1（即 MSB）
-							bitset[ bitset.size() - 1 ].bits |= 0x00000001;	 // 设置 原 MSB + 1 为 1
-							return;
-						}
-
-						//如果要插入中间位置
-						( *this )[ index ] = true;
+						// 如果 index 为 0（即 LSB）
+						( *this )[ 1 ] = true;	// 设置 原 LSB + 1 为 1
 						return;
 					}
+					else if ( index == bitset.size() * 32 - 1 )
+					{
+						// 如果 index 为 bitset.size() * 32 - 1（即 MSB）
+						bitset[ bitset.size() - 1 ].bits |= 0x00000001;	 // 设置 原 MSB + 1 为 1
+						return;
+					}
+
+					//如果要插入中间位置
+					( *this )[ index ] = true;
+					return;
 				}
 			}
 
@@ -842,12 +623,15 @@ namespace TwilightDream
 			// 扩展数据大小
 			resize( this->data_size + 1 );
 
-			DynamicBitSet subset1 = this->subset( 0, index );
-			DynamicBitSet subset2 = this->subset( index, this->data_size );
+			// 从MSB开始，将每个比特值向左移动一位，直到达到指定的插入位置
+			for (size_t i = this->data_size - 1; i > index; --i)
+			{
+				bool bit = get_bit(i - 1);
+				set_bit(i, bit);
+			}
 
-			subset1.push_back( value );	 // 在LSB端添加值
-
-			*this = bitset_concat( subset2, subset1 );	// 注意顺序，因为我们是在LSB端添加
+			// 在指定的索引位置插入新的比特值
+			set_bit(index, value);
 
 			data_chunk_count = this->bitset.size();
 			data_capacity = this->bitset.size() * 32;
@@ -866,15 +650,13 @@ namespace TwilightDream
 				return;
 			}
 
-			if ( this->data_size == 0 )
+			//检测到错误记录的 data_size
+			if ( this->data_size == 0 && bitset[ 0 ].bits == 0)
 			{
-				if ( bitset[ 0 ].bits == 0 )
-				{
-					if ( this->hamming_weight() )
-						this->data_size = this->valid_number_of_bits();
-					else
-						return;
-				}
+				if ( this->hamming_weight() )
+					this->data_size = this->valid_number_of_bits();
+				else
+					return;
 			}
 
 			if ( index >= this->data_size )
@@ -895,10 +677,15 @@ namespace TwilightDream
 				return;
 			}
 
-			DynamicBitSet subset1 = this->subset( 0, index );
-			DynamicBitSet subset2 = this->subset( index + 1, this->data_size );
+			// 从指定的索引位置开始，将每个比特值向右移动一位，直到达到MSB
+			for (size_t i = index; i < this->data_size - 1; ++i)
+			{
+				bool bit = get_bit(i + 1);
+				set_bit(i, bit);
+			}
 
-			*this = bitset_concat( subset2, subset1 );	// 注意顺序，因为我们是在LSB端删除
+			// 收缩数据大小
+			resize( this->data_size - 1 );
 
 			data_chunk_count = this->bitset.size();
 			data_capacity = this->bitset.size() * 32;
@@ -917,52 +704,50 @@ namespace TwilightDream
 				return;
 			}
 
-			if ( this->data_size == 0 )
+			//检测到错误记录的 data_size
+			if ( this->data_size == 0 && bitset[ 0 ].bits == 0)
 			{
-				if ( bitset[ 0 ].bits == 0 )
+				if ( this->hamming_weight() )
 				{
-					if ( this->hamming_weight() )
+					this->data_size = this->valid_number_of_bits();
+				}
+
+				if ( !value && this->data_size == 0 )
+					return;
+				else if ( value && this->data_size == 0 )
+				{
+					/* 特殊处理：bitset不为0 和 data_size 为0，并且且没有任何有效个比特1数据被存储。 */
+
+					//更新btiset容量大小。
+					bitset.resize( needed_chunks( bitset.size() * 32 + 1 ), BooleanBitWrapper( 0x00000000 ) );
+
+					data_chunk_count = this->bitset.size();
+					data_capacity = this->bitset.size() * 32;
+
+					//修复错误记录的 data_size
+					this->data_size = bitset.size() * 32 + 1;
+
+					if ( this->data_size - 1 - backward_index >= this->data_size )
 					{
-						this->data_size = this->valid_number_of_bits();
+						throw std::out_of_range( "Index out of range" );
 					}
 
-					if ( !value && this->data_size == 0 )
-						return;
-					else if ( value && this->data_size == 0 )
+					if ( this->data_size - 1 - backward_index == 0 )
 					{
-						/* 特殊处理：bitset不为0 和 data_size 为0，并且且没有任何有效个比特1数据被存储。 */
-
-						//更新btiset容量大小。
-						bitset.resize( needed_chunks( bitset.size() * 32 + 1 ), BooleanBitWrapper( 0x00000000 ) );
-
-						data_chunk_count = this->bitset.size();
-						data_capacity = this->bitset.size() * 32;
-
-						//修复错误记录的 data_size
-						this->data_size = bitset.size() * 32 + 1;
-
-						if ( this->data_size - 1 - backward_index >= this->data_size )
-						{
-							throw std::out_of_range( "Index out of range" );
-						}
-
-						if ( this->data_size - 1 - backward_index == 0 )
-						{
-							// 如果 backward_index 为 0（即 MSB）
-							( *this )[ this->data_size - 2 ] = true;  // 设置 原 MSB - 1 为 1
-							return;
-						}
-						else if ( this->data_size - 1 - backward_index == bitset.size() * 32 - 1 )
-						{
-							// 如果 backward_index 为 bitset.size() * 32 - 1（即 LSB）
-							bitset[ 0 ].bits |= 0x00000001;	 // 设置 原 LSB - 1 为 1
-							return;
-						}
-
-						//如果要插入中间位置
-						( *this )[ this->data_size - 1 - backward_index ] = true;
+						// 如果 backward_index 为 0（即 MSB）
+						( *this )[ this->data_size - 2 ] = true;  // 设置 原 MSB - 1 为 1
 						return;
 					}
+					else if ( this->data_size - 1 - backward_index == bitset.size() * 32 - 1 )
+					{
+						// 如果 backward_index 为 bitset.size() * 32 - 1（即 LSB）
+						bitset[ 0 ].bits |= 0x00000001;	 // 设置 原 LSB - 1 为 1
+						return;
+					}
+
+					//如果要插入中间位置
+					( *this )[ this->data_size - 1 - backward_index ] = true;
+					return;
 				}
 			}
 
@@ -1031,15 +816,13 @@ namespace TwilightDream
 				return;
 			}
 
-			if ( this->data_size == 0 )
+			//检测到错误记录的 data_size
+			if ( this->data_size == 0 && bitset[ 0 ].bits == 0)
 			{
-				if ( bitset[ 0 ].bits == 0 )
-				{
-					if ( this->hamming_weight() )
-						this->data_size = this->valid_number_of_bits();
-					else
-						return;
-				}
+				if ( this->hamming_weight() )
+					this->data_size = this->valid_number_of_bits();
+				else
+					return;
 			}
 
 			// 将从 MSB 计数转换为从 LSB 计数的索引
@@ -1389,7 +1172,7 @@ namespace TwilightDream
 			}
 
 			// set bit that came at the right to 0 in unmodified blocks
-			std::fill( std::begin( bitset ), std::begin( bitset ) + static_cast<typename decltype( bitset )::difference_type>( blocks_shift ), 0x00000000 );
+			std::fill( bitset.begin(), bitset.begin() + static_cast<typename decltype( bitset )::difference_type>( blocks_shift ), 0x00000000 );
 
 			this->data_size = this->valid_number_of_bits();
 
@@ -1424,14 +1207,12 @@ namespace TwilightDream
 			}
 
 			// set bit that came at the left to 0 in unmodified blocks
-			std::fill( std::begin( bitset ) + static_cast<typename decltype( bitset )::difference_type>( last_block_to_shift + 1 ), std::end( bitset ), 0x00000000 );
+			std::fill( bitset.begin() + static_cast<typename decltype( bitset )::difference_type>( last_block_to_shift + 1 ), bitset.end(), 0x00000000 );
 
 			this->data_size = this->valid_number_of_bits();
 
 			return *this;
 		}
-
-		void custom_reverse(BitIterator first, BitIterator last);
 		
 		// 按位左旋转 (<<<=)
 		void rotate_left( size_t shift );
@@ -1666,6 +1447,17 @@ namespace TwilightDream
 				}
 				else
 				{
+					/*
+						The number of bits to be moved is still within 256.
+						We can certainly use the decomposition problem to prevent overflow by dividing the number of bits that need to be shifted into several times, each time performing a shift within a safe range.
+					*/
+					while(shift >= 32)
+					{
+						left_shift( (32 / 4 * 3) );
+
+						shift -= (32 / 4 * 3);
+					}
+					
 					left_shift( shift );
 					sanitize();	 // unused bits can have changed, reset them to 0
 				}
@@ -1684,6 +1476,17 @@ namespace TwilightDream
 				}
 				else
 				{
+					/*
+						The number of bits to be moved is still within 256.
+						We can certainly use the decomposition problem to prevent overflow by dividing the number of bits that need to be shifted into several times, each time performing a shift within a safe range.
+					*/
+					while(shift >= 32)
+					{
+						right_shift( (32 / 4 * 3) );
+
+						shift -= (32 / 4 * 3);
+					}
+
 					right_shift( shift );
 				}
 			}
@@ -1842,6 +1645,21 @@ namespace TwilightDream
 				}
 
 				return copied;
+			}
+
+			return result;
+		}
+
+		// Convert to std::vector<bool> bit vector
+		std::vector<bool> bit_vector_data() const
+		{
+			std::vector<bool> result;
+
+			result.resize( this->data_size, false );
+			for ( size_t i = 0; i < this->data_size; ++i )
+			{
+				if((*this)[i] == true)
+					result[i] = true;
 			}
 
 			return result;
